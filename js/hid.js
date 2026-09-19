@@ -111,9 +111,13 @@ function controlCandidates(hidDevice, probed = []) {
 }
 
 function describeDevice(hidDevice) {
+  const pages = [];
+  walkCollections(hidDevice.collections, (collection) => {
+    pages.push(`0x${(collection.usagePage ?? 0).toString(16)}:${(collection.usage ?? 0).toString(16)}`);
+  });
   const reports = collectReports(hidDevice);
   const features = reports.map((report) => `id=${report.reportId}/len=${report.size}`).join(',') || 'none';
-  return `${hidDevice.productName || 'HID'} feat[${features}]`;
+  return `${hidDevice.productName || 'HID'} pages[${pages.join(',') || 'none'}] feat[${features}]`;
 }
 
 function scoreDevice(hidDevice) {
