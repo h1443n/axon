@@ -37,10 +37,17 @@ function reportByteLength(report) {
 }
 
 function sizedPayload(payload, size) {
-  if (payload.byteLength === size) return payload;
   const buffer = new Uint8Array(size);
   buffer.set(payload.subarray(0, Math.min(payload.byteLength, size)));
   return buffer;
+}
+
+function isVendorPage(page) {
+  return page === 0xFF00 || page === 0xFF01;
+}
+
+function isBootCollection(collection) {
+  return collection.usagePage === 0x01 && (collection.usage === 0x01 || collection.usage === 0x02 || collection.usage === 0x06);
 }
 
 function collectReports(hidDevice, kind) {
@@ -60,47 +67,79 @@ function collectReports(hidDevice, kind) {
   return reports;
 }
 
+function razerSized(report) {
+  return report.size >= 89 && report.size <= 128;
+}
+
+function fallbackCandidates() {
+  const extras = [];
+  for (const kind of ['feature', 'output']) {
+    for (const reportId of [0, 1, 2, 3]) {
+      for (const size of [90, 91, 89]) {
+        extras.push({ reportId, size, kind, usagePage: 0xFF00 });
+      }
+    }
+  }
+  return extras;
+}
+
 function controlCandidates(hidDevice) {
   const found = [
     ...collectReports(hidDevice, 'feature'),
     ...collectReports(hidDevice, 'output'),
   ];
-  const preferred = found.filter((report) => report.size >= RAZER_REPORT);
-  const pool = preferred.length > 0 ? preferred : found;
-  const extras = [
-    { reportId: 0, size: RAZER_REPORT, kind: 'feature' },
-    { reportId: 0, size: 91, kind: 'feature' },
-    { reportId: 1, size: RAZER_REPORT, kind: 'feature' },
-    { reportId: 0, size: RAZER_REPORT, kind: 'output' },
-  ];
+  const known = found.filter(razerSized);
+  const pool = known.length > 0
+    ? known
+    : found.length === 0 || found.some((report) => isVendorPage(report.usagePage))
+      ? fallbackCandidates()
+      : [];
   const seen = new Set();
   const candidates = [];
-  for (const report of [...pool, ...extras]) {
-    const size = Math.max(report.size || RAZER_REPORT, RAZER_REPORT);
+  for (const report of pool) {
+    const size = report.size || RAZER_REPORT;
     const key = `${report.kind}:${report.reportId}:${size}`;
     if (seen.has(key)) continue;
     seen.add(key);
     candidates.push({ ...report, size });
   }
   candidates.sort((left, right) => {
-    const vendor = (page) => (page === 0xFF00 || page === 0xFF01 ? 1 : 0);
-    return vendor(right.usagePage) - vendor(left.usagePage) || right.size - left.size;
+    const vendor = (page) => (isVendorPage(page) ? 1 : 0);
+    const feature = (kind) => (kind === 'feature' ? 1 : 0);
+    return vendor(right.usagePage) - vendor(left.usagePage)
+      || feature(right.kind) - feature(left.kind)
+      || Math.abs(left.size - RAZER_REPORT) - Math.abs(right.size - RAZER_REPORT);
   });
   return candidates;
+}
+
+function looksLikeControl(hidDevice) {
+  const collections = hidDevice.collections ?? [];
+  if (!collections.length) return true;
+  if (collections.some((collection) => isVendorPage(collection.usagePage))) return true;
+  if (collectReports(hidDevice, 'feature').some(razerSized)) return true;
+  if (collectReports(hidDevice, 'output').some(razerSized)) return true;
+  if (collections.every(isBootCollection)) return false;
+  return true;
 }
 
 function scoreDevice(hidDevice) {
   let score = 0;
   for (const collection of hidDevice.collections ?? []) {
-    if (collection.usagePage === 0xFF00 || collection.usagePage === 0xFF01) score += 10;
+    if (isVendorPage(collection.usagePage)) score += 40;
+    if (isBootCollection(collection)) score -= 20;
     for (const report of collection.featureReports ?? []) {
-      if (reportByteLength(report) >= RAZER_REPORT) score += 20;
+      if (razerSized({ size: reportByteLength(report) })) score += 50;
     }
     for (const report of collection.outputReports ?? []) {
-      if (reportByteLength(report) >= RAZER_REPORT) score += 8;
+      if (razerSized({ size: reportByteLength(report) })) score += 8;
     }
   }
   return score;
+}
+
+function isWriteFailure(error) {
+  return /Failed to write the report/i.test(error?.message ?? '');
 }
 
 export class RazerSession {
@@ -172,7 +211,12 @@ export class RazerSession {
       ...commands.getFirmware(),
     });
     let lastError = null;
-    for (const candidate of controlCandidates(this.hidDevice)) {
+    let sawReply = false;
+    const seen = new Set();
+    for (const candidate of [...controlCandidates(this.hidDevice), ...fallbackCandidates()]) {
+      const key = `${candidate.kind}:${candidate.reportId}:${candidate.size}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
       this.reportId = candidate.reportId;
       this.reportSize = candidate.size;
       this.useOutput = candidate.kind === 'output';
@@ -181,6 +225,7 @@ export class RazerSession {
         await sleep(WAIT_MS);
         const raw = unwrapReport(await this.hidDevice.receiveFeatureReport(this.reportId));
         const decoded = decodeReport(raw);
+        sawReply = true;
         if (decoded.status !== STATUS.SUCCESS && decoded.status !== STATUS.BUSY) continue;
         const firmware = `v${decoded.args[0] ?? 0}.${decoded.args[1] ?? 0}`;
         if (firmware === 'v0.0') continue;
@@ -189,7 +234,7 @@ export class RazerSession {
         lastError = error;
       }
     }
-    throw lastError ?? new Error(t('noHidReport'));
+    throw (sawReply ? new Error(t('noHidReport')) : lastError) ?? new Error(t('noHidReport'));
   }
 
   async getFirmware() {
@@ -285,16 +330,34 @@ export class RazerSession {
 }
 
 export async function openControlInterface(hidDevices, resolveProfile) {
-  const queue = [...hidDevices].sort((left, right) => scoreDevice(right) - scoreDevice(left));
   const errors = [];
+  const opened = [];
 
-  for (const hidDevice of queue) {
+  for (const hidDevice of hidDevices) {
     const profile = resolveProfile(hidDevice.productId);
     if (!profile) continue;
     try {
       if (!hidDevice.opened) await hidDevice.open();
+      opened.push(hidDevice);
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+
+  const queue = opened
+    .filter(looksLikeControl)
+    .sort((left, right) => scoreDevice(right) - scoreDevice(left));
+
+  for (const hidDevice of queue) {
+    const profile = resolveProfile(hidDevice.productId);
+    try {
       const session = new RazerSession(hidDevice, profile);
       const firmware = await session.handshake();
+      for (const extra of opened) {
+        if (extra !== hidDevice && extra.opened) {
+          try { await extra.close(); } catch { /* ignore */ }
+        }
+      }
       return { session, firmware };
     } catch (error) {
       errors.push(error);
@@ -304,10 +367,20 @@ export async function openControlInterface(hidDevices, resolveProfile) {
     }
   }
 
+  for (const hidDevice of opened) {
+    if (hidDevice.opened) {
+      try { await hidDevice.close(); } catch { /* ignore */ }
+    }
+  }
+
   const unknown = hidDevices.find((device) => !resolveProfile(device.productId));
-  if (unknown && queue.every((device) => !resolveProfile(device.productId))) {
+  if (unknown && hidDevices.every((device) => !resolveProfile(device.productId))) {
     const pid = unknown.productId.toString(16).padStart(4, '0');
     throw new Error(t('unsupportedMouse', { pid }));
+  }
+
+  if (!queue.length || errors.some(isWriteFailure)) {
+    throw new Error(t('hidWriteFailed'));
   }
 
   const detail = errors[0]?.message ? `: ${errors[0].message}` : '';

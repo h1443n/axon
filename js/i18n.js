@@ -44,6 +44,7 @@ const dictionaries = {
     noHidReport: 'no matching HID report',
     unsupportedMouse: 'Mouse 1532:{pid} is not supported yet',
     noControlInterface: 'Control HID interface not found{detail}',
+    hidWriteFailed: 'Chrome could not write the HID report. Fully quit Razer Synapse (including the tray), restart Chrome, and in the HID dialog pick a Razer device, not “mouse”.',
     lang: 'Language',
   },
   ru: {
@@ -89,6 +90,7 @@ const dictionaries = {
     noHidReport: 'нет подходящего HID-отчёта',
     unsupportedMouse: 'Мышь 1532:{pid} пока не поддерживается',
     noControlInterface: 'Не найден управляющий HID-интерфейс{detail}',
+    hidWriteFailed: 'Chrome не смог записать HID-отчёт. Полностью закройте Razer Synapse (и иконку в трее), перезапустите Chrome и в диалоге выберите устройство Razer, не «мышь».',
     lang: 'Язык',
   },
 };

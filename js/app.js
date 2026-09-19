@@ -1,4 +1,4 @@
-import { getDevice, hidDeviceFilters, listDevices } from './devices/registry.js';
+import { getDevice, hidDeviceExclusionFilters, hidDeviceFilters, listDevices } from './devices/registry.js';
 import { openControlInterface } from './hid.js';
 import {
   applyStatic,
@@ -309,14 +309,24 @@ function bindControls(profile) {
 }
 
 async function requestDevices() {
+  const filters = hidDeviceFilters();
+  const exclusionFilters = hidDeviceExclusionFilters();
   try {
-    return await navigator.hid.requestDevice({ filters: hidDeviceFilters() });
+    return await navigator.hid.requestDevice({ filters, exclusionFilters });
   } catch (error) {
     if (error.name === 'NotFoundError') {
       toast(t('emptyPicker'), true);
       return [];
     }
-    throw error;
+    try {
+      return await navigator.hid.requestDevice({ filters });
+    } catch (retryError) {
+      if (retryError.name === 'NotFoundError') {
+        toast(t('emptyPicker'), true);
+        return [];
+      }
+      throw retryError;
+    }
   }
 }
 
