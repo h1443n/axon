@@ -333,10 +333,8 @@ async function connect() {
   const unique = [];
   const seen = new Set();
   for (const hidDevice of [...picked, ...granted]) {
-    const usages = (hidDevice.collections ?? []).map((collection) => `${collection.usagePage}:${collection.usage}`).join(',');
-    const key = `${hidDevice.productId}:${usages}:${hidDevice.collections?.length ?? 0}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (seen.has(hidDevice)) continue;
+    seen.add(hidDevice);
     unique.push(hidDevice);
   }
 

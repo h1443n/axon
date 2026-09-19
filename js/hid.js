@@ -110,16 +110,6 @@ function controlCandidates(hidDevice, probed = []) {
   return candidates;
 }
 
-function isBootOnly(hidDevice) {
-  const collections = hidDevice.collections ?? [];
-  if (!collections.length) return false;
-  let bootOnly = true;
-  walkCollections(collections, (collection) => {
-    if (!isBootCollection(collection)) bootOnly = false;
-  });
-  return bootOnly && !collectReports(hidDevice).some((report) => razerSized(report.size) || report.size === 89);
-}
-
 function describeDevice(hidDevice) {
   const reports = collectReports(hidDevice);
   const features = reports.map((report) => `id=${report.reportId}/len=${report.size}`).join(',') || 'none';
@@ -336,40 +326,61 @@ export class RazerSession {
 }
 
 export async function openControlInterface(hidDevices, resolveProfile) {
-  const queue = [...hidDevices]
-    .filter((device) => resolveProfile(device.productId))
-    .sort((left, right) => scoreDevice(right) - scoreDevice(left));
   const errors = [];
   const snapshots = [];
+  const opened = [];
+
+  for (const hidDevice of hidDevices) {
+    if (!resolveProfile(hidDevice.productId)) continue;
+    try {
+      if (!hidDevice.opened) await hidDevice.open();
+      opened.push(hidDevice);
+      snapshots.push(describeDevice(hidDevice));
+    } catch (error) {
+      errors.push(error);
+      snapshots.push(`${hidDevice.productName || 'HID'} open-failed`);
+    }
+  }
+
+  const withFeature = opened.filter((device) => (
+    collectReports(device).some((report) => report.size >= 89)
+  ));
+  const queue = (withFeature.length > 0 ? withFeature : opened)
+    .sort((left, right) => scoreDevice(right) - scoreDevice(left));
 
   for (const hidDevice of queue) {
     const profile = resolveProfile(hidDevice.productId);
     try {
-      if (!hidDevice.opened) await hidDevice.open();
-      snapshots.push(describeDevice(hidDevice));
-      if (isBootOnly(hidDevice) && queue.length > 1) {
-        await hidDevice.close();
-        continue;
-      }
       const session = new RazerSession(hidDevice, profile);
       const firmware = await session.handshake();
+      for (const extra of opened) {
+        if (extra !== hidDevice && extra.opened) {
+          try { await extra.close(); } catch { /* ignore */ }
+        }
+      }
       return { session, firmware };
     } catch (error) {
       errors.push(error);
-      if (hidDevice.opened) {
-        try { await hidDevice.close(); } catch { /* ignore */ }
-      }
+    }
+  }
+
+  for (const hidDevice of opened) {
+    if (hidDevice.opened) {
+      try { await hidDevice.close(); } catch { /* ignore */ }
     }
   }
 
   const unknown = hidDevices.find((device) => !resolveProfile(device.productId));
-  if (unknown && queue.length === 0) {
+  if (unknown && opened.length === 0 && !errors.length) {
     const pid = unknown.productId.toString(16).padStart(4, '0');
     throw new Error(t('unsupportedMouse', { pid }));
   }
 
   const writeError = errors.find((error) => /write the (feature )?report/i.test(error?.message ?? ''));
   const hint = snapshots.length ? ` [${snapshots.join(' | ')}]` : '';
+  if (opened.length > 0 && withFeature.length === 0) {
+    throw new Error(t('hidNeedOtherInterface', { hint }));
+  }
   const detail = writeError?.message || errors[0]?.message;
   throw new Error(t('noControlInterface', { detail: detail ? `: ${detail}${hint}` : hint }));
 }

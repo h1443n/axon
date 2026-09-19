@@ -44,6 +44,7 @@ const dictionaries = {
     noHidReport: 'no matching HID report',
     unsupportedMouse: 'Mouse 1532:{pid} is not supported yet',
     noControlInterface: 'Control HID interface not found{detail}',
+    hidNeedOtherInterface: 'This HID row is the mouse pointer, not the control interface.{hint} In the Chrome dialog pick another “Razer DeathAdder Essential” line (not Mouse), or select every Razer row.',
     lang: 'Language',
   },
   ru: {
@@ -89,6 +90,7 @@ const dictionaries = {
     noHidReport: 'нет подходящего HID-отчёта',
     unsupportedMouse: 'Мышь 1532:{pid} пока не поддерживается',
     noControlInterface: 'Не найден управляющий HID-интерфейс{detail}',
+    hidNeedOtherInterface: 'Выбрана строка указателя мыши, не управляющий интерфейс.{hint} В диалоге Chrome выбери другую строку «Razer DeathAdder Essential» (не Mouse) или отметь все строки Razer.',
     lang: 'Язык',
   },
 };
