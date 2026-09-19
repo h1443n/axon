@@ -32,11 +32,18 @@
       <p class="lede" data-i18n="lede">
         Sets DPI, polling rate, and lighting, then writes it to the mouse. No desktop app.
       </p>
-      <ul class="checklist">
+          <ul class="checklist">
         <li data-i18n="checkBrowser">Chrome or Edge, mouse over USB</li>
         <li data-i18n="checkSynapse">Fully quit Razer Synapse, including the tray</li>
-        <li data-i18n="checkHid">In the HID dialog pick a Razer device, not “mouse”</li>
+        <li data-i18n="checkHid">Connect. If it fails, Chrome is hiding the mouse control channel — close Chrome and start it with the command below (save a shortcut once)</li>
       </ul>
+      <div class="chrome-fix">
+        <p class="chrome-fix-hint" data-i18n="chromeFixHint">Windows: close every Chrome window, Win+R, paste, Enter, then open this page again.</p>
+        <div class="chrome-fix-row">
+          <code id="chrome-flag">chrome.exe --disable-features=WebHidRecursiveFiltering</code>
+          <button id="copy-chrome-flag" class="btn btn-ghost" type="button" data-i18n="copyFlag">Copy</button>
+        </div>
+      </div>
       <section class="catalog">
         <h2 data-i18n="support">Support</h2>
         <details>

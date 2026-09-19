@@ -427,6 +427,16 @@ function boot() {
     setLocale(button.dataset.lang);
     applyLanguage();
   });
+  document.getElementById('copy-chrome-flag')?.addEventListener('click', async () => {
+    const text = document.getElementById('chrome-flag')?.textContent?.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(t('copiedFlag'));
+    } catch {
+      toast(t('copyFailed'), true);
+    }
+  });
   if (!('hid' in navigator)) {
     connectBtn.disabled = true;
     setBadge(t('needChromium'), true);

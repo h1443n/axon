@@ -153,6 +153,38 @@ main {
   margin-top: 8px;
 }
 
+.chrome-fix {
+  margin: -16px 0 32px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.chrome-fix-hint {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.chrome-fix-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.chrome-fix-row code {
+  flex: 1 1 220px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: 12px/1.4 var(--mono);
+  overflow-wrap: anywhere;
+}
+
 .mono {
   font-family: var(--mono);
   font-size: 0.9em;

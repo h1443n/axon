@@ -129,7 +129,7 @@ Command protocol is [OpenRazer](https://github.com/openrazer/openrazer). This pr
 1. A Chromium browser (Chrome, Edge, Opera) over HTTPS.
 2. Mouse over USB. Quit Razer Synapse first.
 3. “Connect mouse” → pick the device in the system dialog.
-4. If Chrome only shows “mouse” and the connection fails, that HID collection is blocked. Use the vendor interface of the same device (usually in the same list).
+4. If Connect fails, current Chrome hides the Razer control HID (it looks like a keyboard). Close Chrome and start it once with `chrome.exe --disable-features=WebHidRecursiveFiltering`, then open the site again. Save that as a shortcut.
 
 Settings are written to the mouse; no background process is required.
 
