@@ -1,5 +1,3 @@
-import deathadderEssential2021 from './deathadder-essential-2021.js';
-import basiliskV3ProWireless from './basilisk-v3-pro-wireless.js';
 import abyssus from './abyssus.js';
 import abyssus1800 from './abyssus-1800.js';
 import abyssus2000 from './abyssus-2000.js';
@@ -22,6 +20,7 @@ import basiliskV3Pro35KWireless from './basilisk-v-3-pro-35-k-wireless.js';
 import basiliskV3ProWired from './basilisk-v-3-pro-wired.js';
 import basiliskV3XHyperSpeed from './basilisk-v-3-x-hyper-speed.js';
 import basiliskV335K from './basilisk-v-335-k.js';
+import basiliskV3ProWireless from './basilisk-v3-pro-wireless.js';
 import basiliskXHyperSpeed from './basilisk-x-hyper-speed.js';
 import cobra from './cobra.js';
 import cobraProWired from './cobra-pro-wired.js';
@@ -51,6 +50,7 @@ import deathAdderV3ProWireless from './death-adder-v-3-pro-wireless.js';
 import deathAdderV3ProWirelessAlternate from './death-adder-v-3-pro-wireless-alternate.js';
 import deathAdderV4ProWired from './death-adder-v-4-pro-wired.js';
 import deathAdderV4ProWireless from './death-adder-v-4-pro-wireless.js';
+import deathadderEssential2021 from './deathadder-essential-2021.js';
 import diamondbackChroma from './diamondback-chroma.js';
 import hyperPollingWirelessDongle from './hyper-polling-wireless-dongle.js';
 import imperator from './imperator.js';
@@ -113,8 +113,6 @@ import viperV3ProWired from './viper-v-3-pro-wired.js';
 import viperV3ProWireless from './viper-v-3-pro-wireless.js';
 
 const catalog = [
-  deathadderEssential2021,
-  basiliskV3ProWireless,
   abyssus,
   abyssus1800,
   abyssus2000,
@@ -137,6 +135,7 @@ const catalog = [
   basiliskV3ProWired,
   basiliskV3XHyperSpeed,
   basiliskV335K,
+  basiliskV3ProWireless,
   basiliskXHyperSpeed,
   cobra,
   cobraProWired,
@@ -166,6 +165,7 @@ const catalog = [
   deathAdderV3ProWirelessAlternate,
   deathAdderV4ProWired,
   deathAdderV4ProWireless,
+  deathadderEssential2021,
   diamondbackChroma,
   hyperPollingWirelessDongle,
   imperator,
