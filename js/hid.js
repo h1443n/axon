@@ -89,11 +89,7 @@ function controlCandidates(hidDevice) {
     ...collectReports(hidDevice, 'output'),
   ];
   const known = found.filter(razerSized);
-  const pool = known.length > 0
-    ? known
-    : found.length === 0 || found.some((report) => isVendorPage(report.usagePage))
-      ? fallbackCandidates()
-      : [];
+  const pool = known.length > 0 ? known : fallbackCandidates();
   const seen = new Set();
   const candidates = [];
   for (const report of pool) {
@@ -344,8 +340,8 @@ export async function openControlInterface(hidDevices, resolveProfile) {
     }
   }
 
-  const queue = opened
-    .filter(looksLikeControl)
+  const preferred = opened.filter(looksLikeControl);
+  const queue = (preferred.length > 0 ? preferred : opened)
     .sort((left, right) => scoreDevice(right) - scoreDevice(left));
 
   for (const hidDevice of queue) {
